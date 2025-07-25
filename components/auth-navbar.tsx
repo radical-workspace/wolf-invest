@@ -6,7 +6,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Menu, X, LogOut, User, Shield } from "lucide-react"
 import { ModeToggle } from "./mode-toggle"
-import { useAuth } from "./auth-provider"
+import { useAuth } from "@/components/auth-provider"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +17,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 
-export default function AuthNavbar() {
+export function AuthNavbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const { user, logout, isAuthenticated, isAdmin } = useAuth()
@@ -26,10 +26,14 @@ export default function AuthNavbar() {
     setMounted(true)
   }, [])
 
-  const handleLogout = () => {
-    logout()
-    setIsMenuOpen(false) // Close menu on logout
-    window.location.href = "/"
+  const handleLogout = async () => {
+    try {
+      await logout()
+      setIsMenuOpen(false) // Close menu on logout
+      window.location.href = "/"
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   const closeMenu = () => {
