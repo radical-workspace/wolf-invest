@@ -1,6 +1,6 @@
 import type React from "react"
 import { AuthProvider } from "@/components/auth-provider"
-import AuthNavbar from "@/components/auth-navbar"
+import { AuthNavbar } from "@/components/auth-navbar"
 
 export default function AuthLayout({
   children,
