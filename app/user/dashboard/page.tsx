@@ -21,6 +21,7 @@ import {
   BarChart3,
 } from "lucide-react"
 import { generateMockInvestments, calculateInvestmentStats, INVESTMENT_PLANS } from "@/lib/investment-data"
+import { supabase } from "@/lib/supabase"
 import type { Investment } from "@/lib/investment-data"
 
 function UserDashboardContent() {
@@ -28,18 +29,39 @@ function UserDashboardContent() {
   const router = useRouter()
   const [investments, setInvestments] = useState<Investment[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (user) {
-      // Load user investments (mock data for now)
-      const userInvestments = generateMockInvestments(user.id)
-      setInvestments(userInvestments)
-      setLoading(false)
-    }
-  }, [user])
+    const fetchInvestments = async () => {
+      if (!user) return;
+      setLoading(true);
+      setError(null);
+      try {
+        // Fetch investments from Supabase
+        const { data, error } = await supabase
+          .from('investments')
+          .select('*')
+          .eq('userId', user.id);
+        if (error) {
+          setError('Failed to load investments.');
+          setInvestments([]);
+        } else {
+          setInvestments(data || []);
+        }
+      } catch (err) {
+        setError('An unexpected error occurred.');
+        setInvestments([]);
+      }
+      setLoading(false);
+    };
+    fetchInvestments();
+  }, [user]);
 
   if (loading) {
-    return <LoadingSpinner message="Loading your dashboard..." />
+    return <LoadingSpinner message="Loading your dashboard..." />;
+  }
+  if (error) {
+    return <div className="p-8 text-center text-red-600">{error}</div>;
   }
 
   const stats = calculateInvestmentStats(investments)
@@ -275,21 +297,21 @@ function UserDashboardContent() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {investments.map((investment) => (
-              <InvestmentCard key={investment.id} investment={investment} />
-            ))}
+            {investments.length > 0 ? (
+              investments.map((investment) => (
+                <InvestmentCard key={investment.id} investment={investment} />
+              ))
+            ) : (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Investments Yet</h3>
+                  <p className="text-muted-foreground mb-4">Start your investment journey with one of our plans</p>
+                  <Button onClick={() => router.push("/investment-plans")}>View Investment Plans</Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
-
-          {investments.length === 0 && (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Investments Yet</h3>
-                <p className="text-muted-foreground mb-4">Start your investment journey with one of our plans</p>
-                <Button onClick={() => router.push("/investment-plans")}>View Investment Plans</Button>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         <TabsContent value="transactions" className="space-y-6">
@@ -299,11 +321,29 @@ function UserDashboardContent() {
               <CardDescription>View all your investment transactions and earnings</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-12">
-                <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Transaction History</h3>
-                <p className="text-muted-foreground">Detailed transaction history will be available here</p>
-              </div>
+              {investments.length > 0 ? (
+                <div className="space-y-4">
+                  {investments.map((inv) => (
+                    <div key={inv.id} className="border-b pb-4">
+                      <div className="flex justify-between">
+                        <span className="font-medium">{INVESTMENT_PLANS.find(p => p.type === inv.planType)?.name || inv.planType}</span>
+                        <span className="text-green-600">${inv.amount.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Status: {inv.status}</span>
+                        <span>Started: {new Date(inv.startDate).toLocaleDateString()}</span>
+                        <span>Ended: {new Date(inv.endDate).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Transactions Yet</h3>
+                  <p className="text-muted-foreground">Your investment transactions will appear here.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
