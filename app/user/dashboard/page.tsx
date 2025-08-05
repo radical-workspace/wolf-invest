@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { prisma } from "@/lib/prisma"
 import { useAuth } from "@/components/auth-provider"
 import { useRouter } from "next/navigation"
 import { LoadingSpinner } from "@/components/loading-spinner"
@@ -20,8 +21,7 @@ import {
   PieChart,
   BarChart3,
 } from "lucide-react"
-import { generateMockInvestments, calculateInvestmentStats, INVESTMENT_PLANS } from "@/lib/investment-data"
-import { supabase } from "@/lib/supabase"
+import { calculateInvestmentStats, INVESTMENT_PLANS } from "@/lib/investment-data"
 import type { Investment } from "@/lib/investment-data"
 
 function UserDashboardContent() {
@@ -30,6 +30,8 @@ function UserDashboardContent() {
   const [investments, setInvestments] = useState<Investment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [withdrawAmount, setWithdrawAmount] = useState("")
+  const [withdrawStatus, setWithdrawStatus] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchInvestments = async () => {
@@ -37,17 +39,26 @@ function UserDashboardContent() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch investments from Supabase
-        const { data, error } = await supabase
-          .from('investments')
-          .select('*')
-          .eq('userId', user.id);
-        if (error) {
-          setError('Failed to load investments.');
-          setInvestments([]);
-        } else {
-          setInvestments(data || []);
-        }
+        // Fetch investments from SQLite via Prisma
+        const data = await prisma.investment.findMany({
+          where: { userId: Number(user.id) },
+        });
+        // Map raw data to Investment type
+        const mappedInvestments: Investment[] = (data || []).map((inv: any) => ({
+          id: inv.id,
+          amount: inv.amount,
+          status: inv.status,
+          userId: inv.userId,
+          planType: inv.planType ?? "amateur", // fallback or adjust as needed
+          dailyROI: inv.dailyROI ?? 0,
+          startDate: inv.startDate ?? inv.createdAt,
+          endDate: inv.endDate ?? inv.createdAt,
+          totalEarnings: inv.totalEarnings ?? 0,
+          daysRemaining: inv.daysRemaining ?? 0,
+          nextPayoutDate: inv.nextPayoutDate ?? inv.createdAt,
+          createdAt: inv.createdAt, // Add createdAt property
+        }));
+        setInvestments(mappedInvestments);
       } catch (err) {
         setError('An unexpected error occurred.');
         setInvestments([]);
@@ -162,6 +173,57 @@ function UserDashboardContent() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
+      {/* Withdrawal Request Form */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Request Withdrawal</CardTitle>
+          <CardDescription>Withdraw funds from your account</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault()
+              setWithdrawStatus(null)
+              if (!withdrawAmount || isNaN(Number(withdrawAmount)) || Number(withdrawAmount) <= 0) {
+                setWithdrawStatus("Please enter a valid amount.")
+                return
+              }
+              try {
+                const res = await fetch("/api/withdrawal/create", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ userId: user?.id, amount: withdrawAmount }),
+                })
+                const result = await res.json()
+                if (res.ok) {
+                  setWithdrawStatus("Withdrawal request submitted!")
+                  setWithdrawAmount("")
+                } else {
+                  setWithdrawStatus(result.error || "Failed to submit withdrawal request.")
+                }
+              } catch (err) {
+                setWithdrawStatus("Error submitting withdrawal request.")
+              }
+            }}
+          >
+            <div className="flex gap-4 items-end">
+              <input
+                type="number"
+                min="1"
+                step="0.01"
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                placeholder="Amount (USD)"
+                className="border rounded px-3 py-2 w-40"
+              />
+              <Button type="submit">Request Withdrawal</Button>
+            </div>
+            {withdrawStatus && (
+              <div className="mt-2 text-sm text-blue-600">{withdrawStatus}</div>
+            )}
+          </form>
+        </CardContent>
+      </Card>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

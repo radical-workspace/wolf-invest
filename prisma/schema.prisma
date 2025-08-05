@@ -1,0 +1,46 @@
+// Prisma schema for SQLite
+// You can add more fields/tables as needed
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   // "user" or "admin"
+  createdAt DateTime @default(now())
+  investments Investment[]
+  withdrawals Withdrawal[]
+}
+
+model Investment {
+  id        Int      @id @default(autoincrement())
+  amount    Float
+  status    String   // "active", "completed", etc.
+  planType  String   // e.g. "amateur", "pro", etc.
+  dailyROI  Float    // daily return on investment
+  endDate   DateTime // investment end date
+  totalEarnings Float // total earnings for this investment
+  daysRemaining Int   // days left for investment
+  nextPayoutDate DateTime // next payout date
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+}
+
+model Withdrawal {
+  id        Int      @id @default(autoincrement())
+  amount    Float
+  status    String   // "pending", "approved", etc.
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+}

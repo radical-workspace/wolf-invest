@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
+import { prisma } from "@/lib/prisma"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -52,19 +52,14 @@ export default function AdminDashboard() {
       setError(null)
       try {
         // Fetch users
-        const { data: users, error: usersError } = await supabase
-          .from("profiles")
-          .select("id, full_name, email, role, created_at")
-          .order("created_at", { ascending: false })
-          .limit(5)
-        if (usersError) throw usersError
-        setRecentUsers(users || [])
+        const users = await prisma.user.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        })
+        setRecentUsers(users)
 
         // Fetch investments
-        const { data: investments, error: invError } = await supabase
-          .from("investments")
-          .select("*")
-        if (invError) throw invError
+        const investments = await prisma.investment.findMany()
         setStats((prev: any) => ({
           ...prev,
           totalInvested: investments.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0),
@@ -72,16 +67,13 @@ export default function AdminDashboard() {
         }))
 
         // Fetch withdrawals
-        const { data: withdrawals, error: wdError } = await supabase
-          .from("withdrawals")
-          .select("*")
-        if (wdError) throw wdError
-        setPendingWithdrawals(withdrawals || [])
+        const withdrawals = await prisma.withdrawal.findMany()
+        setPendingWithdrawals(withdrawals)
         setStats((prev: any) => ({ ...prev, pendingWithdrawals: withdrawals.length }))
 
         // Fetch activity (example: last 10 investments)
         setRecentActivity(
-          (investments || []).slice(0, 10).map((inv: any) => ({
+          investments.slice(0, 10).map((inv: any) => ({
             id: inv.id,
             type: "investment_created",
             user: inv.userId,

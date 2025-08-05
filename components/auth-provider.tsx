@@ -2,8 +2,8 @@
 
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
-import { supabase, getProfile, updateLastLogin } from "@/lib/supabase"
-import type { User as SupabaseUser } from "@supabase/supabase-js"
+import { prisma } from "@/lib/prisma"
+import bcrypt from "bcryptjs"
 
 export type UserRole = "user" | "admin"
 
@@ -40,116 +40,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true)
-
-    const fetchUser = async () => {
-      try {
-        const {
-          data: { user: supabaseUser },
-        } = await supabase.auth.getUser()
-
-        if (supabaseUser) {
-          await loadUserProfile(supabaseUser)
-        }
-      } catch (error) {
-        console.error("Error fetching initial user:", error)
-      }
-    }
-
-    fetchUser()
-
-    // Listen for auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event)
-
-      if (event === "SIGNED_IN" && session?.user) {
-        await loadUserProfile(session.user)
-      } else if (event === "SIGNED_OUT") {
-        setUser(null)
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    // Optionally, load user from session/cookie here
   }, [])
-
-  const loadUserProfile = async (supabaseUser: SupabaseUser) => {
-    try {
-      // Wait a bit for the trigger to create the profile
-      let profile = await getProfile(supabaseUser.id)
-
-      // If profile doesn't exist, wait and try again (trigger might be processing)
-      if (!profile) {
-        console.log("Profile not found, waiting for trigger...")
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        profile = await getProfile(supabaseUser.id)
-      }
-
-      if (profile) {
-        setUser({
-          id: supabaseUser.id,
-          name: profile.full_name,
-          email: profile.email,
-          role: profile.role,
-          isActive: profile.is_active ?? true,
-          avatar: profile.avatar_url,
-          createdAt: profile.created_at,
-          lastLogin: profile.last_login,
-        })
-
-        // Update last login (non-blocking)
-        updateLastLogin(supabaseUser.id).catch(console.warn)
-      } else {
-        console.error("Profile still not found for user:", supabaseUser.id)
-      }
-    } catch (error) {
-      console.error("Error loading user profile:", error)
-    }
-  }
 
   const register = async ({ name, email, password }: { name: string; email: string; password: string }) => {
     setIsLoading(true)
-
     try {
-      console.log("Starting registration for:", email)
-
-      // Create auth user - the trigger will handle profile creation
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: name,
-          },
+      // Check if user already exists
+      const existing = await prisma.user.findUnique({ where: { email } })
+      if (existing) {
+        setIsLoading(false)
+        return { success: false, error: "Email already registered" }
+      }
+      // Hash password
+      const hashed = await bcrypt.hash(password, 10)
+      const newUser = await prisma.user.create({
+        data: {
+          name,
+          email,
+          password: hashed,
+          role: "user",
         },
       })
-
-      if (authError) {
-        console.error("Auth signup error:", authError)
-        setIsLoading(false)
-        return { success: false, error: authError.message }
-      }
-
-      if (!authData.user) {
-        setIsLoading(false)
-        return { success: false, error: "Failed to create user account" }
-      }
-
-      console.log("Auth user created:", authData.user.id)
-
+      setUser({
+        id: String(newUser.id),
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role as UserRole,
+        isActive: true,
+        createdAt: newUser.createdAt.toISOString(),
+      })
       setIsLoading(false)
-
-      // Check if email confirmation is required
-      if (!authData.user.email_confirmed_at) {
-        return {
-          success: true,
-          error: "Please check your email and click the confirmation link to complete registration.",
-        }
-      }
-
       return { success: true }
     } catch (error) {
-      console.error("Registration error:", error)
       setIsLoading(false)
       return {
         success: false,
@@ -160,33 +83,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
-
     try {
-      console.log("Starting login for:", email)
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const found = await prisma.user.findUnique({ where: { email } })
+      if (!found) {
+        setIsLoading(false)
+        return { success: false, error: "Invalid email or password" }
+      }
+      const valid = await bcrypt.compare(password, found.password)
+      if (!valid) {
+        setIsLoading(false)
+        return { success: false, error: "Invalid email or password" }
+      }
+      setUser({
+        id: String(found.id),
+        name: found.name,
+        email: found.email,
+        role: found.role as UserRole,
+        isActive: true,
+        createdAt: found.createdAt.toISOString(),
       })
-
-      if (error) {
-        console.error("Login error:", error)
-        setIsLoading(false)
-        return { success: false, error: error.message }
-      }
-
-      if (!data.user) {
-        setIsLoading(false)
-        return { success: false, error: "Login failed" }
-      }
-
-      console.log("Login successful for:", data.user.id)
-
-      // Profile will be loaded by the auth state change listener
       setIsLoading(false)
       return { success: true }
     } catch (error) {
-      console.error("Login error:", error)
       setIsLoading(false)
       return {
         success: false,
@@ -196,12 +114,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
-    try {
-      await supabase.auth.signOut()
-      setUser(null)
-    } catch (error) {
-      console.error("Logout error:", error)
-    }
+    setUser(null)
+    // Optionally clear session/cookie here
   }
 
   const isAuthenticated = !!user
