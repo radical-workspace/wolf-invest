@@ -46,32 +46,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = async ({ name, email, password }: { name: string; email: string; password: string }) => {
     setIsLoading(true)
     try {
-      // Check if user already exists
-      const existing = await prisma.user.findUnique({ where: { email } })
-      if (existing) {
-        setIsLoading(false)
-        return { success: false, error: "Email already registered" }
-      }
-      // Hash password
-      const hashed = await bcrypt.hash(password, 10)
-      const newUser = await prisma.user.create({
-        data: {
-          name,
-          email,
-          password: hashed,
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      })
+      const result = await res.json()
+      if (res.ok && result.success) {
+        // Set session cookie
+        await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: result.user.id }),
+        })
+        setUser({
+          id: String(result.user.id),
+          name: result.user.name,
+          email: result.user.email,
           role: "user",
-        },
-      })
-      setUser({
-        id: String(newUser.id),
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role as UserRole,
-        isActive: true,
-        createdAt: newUser.createdAt.toISOString(),
-      })
-      setIsLoading(false)
-      return { success: true }
+          isActive: true,
+          createdAt: new Date().toISOString(),
+        })
+        setIsLoading(false)
+        return { success: true }
+      } else {
+        setIsLoading(false)
+        return { success: false, error: result.error || "Registration failed" }
+      }
     } catch (error) {
       setIsLoading(false)
       return {
@@ -84,26 +85,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      const found = await prisma.user.findUnique({ where: { email } })
-      if (!found) {
-        setIsLoading(false)
-        return { success: false, error: "Invalid email or password" }
-      }
-      const valid = await bcrypt.compare(password, found.password)
-      if (!valid) {
-        setIsLoading(false)
-        return { success: false, error: "Invalid email or password" }
-      }
-      setUser({
-        id: String(found.id),
-        name: found.name,
-        email: found.email,
-        role: found.role as UserRole,
-        isActive: true,
-        createdAt: found.createdAt.toISOString(),
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       })
-      setIsLoading(false)
-      return { success: true }
+      const result = await res.json()
+      if (res.ok && result.success) {
+        // Set session cookie
+        await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: result.user.id }),
+        })
+        setUser({
+          id: String(result.user.id),
+          name: result.user.name,
+          email: result.user.email,
+          role: result.user.role,
+          isActive: true,
+          createdAt: new Date().toISOString(),
+        })
+        setIsLoading(false)
+        return { success: true }
+      } else {
+        setIsLoading(false)
+        return { success: false, error: result.error || "Login failed" }
+      }
     } catch (error) {
       setIsLoading(false)
       return {
@@ -115,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     setUser(null)
-    // Optionally clear session/cookie here
+    await fetch("/api/auth/session", { method: "DELETE" })
   }
 
   const isAuthenticated = !!user
