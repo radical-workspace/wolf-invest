@@ -32,6 +32,8 @@ function UserDashboardContent() {
   const [error, setError] = useState<string | null>(null)
   const [withdrawAmount, setWithdrawAmount] = useState("")
   const [withdrawStatus, setWithdrawStatus] = useState<string | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [selectedInvestment, setSelectedInvestment] = useState<Investment | null>(null)
 
   useEffect(() => {
     const fetchInvestments = async () => {
@@ -116,7 +118,13 @@ function UserDashboardContent() {
     const progress = investment.status === "completed" ? 100 : ((7 - investment.daysRemaining) / 7) * 100
 
     return (
-      <Card>
+      <Card
+        className="cursor-pointer hover:shadow-lg transition"
+        onClick={() => {
+          setSelectedInvestment(investment)
+          setModalOpen(true)
+        }}
+      >
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -358,22 +366,76 @@ function UserDashboardContent() {
             <Button onClick={() => router.push("/investment-plans")}>Start New Investment</Button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {investments.length > 0 ? (
-              investments.map((investment) => (
-                <InvestmentCard key={investment.id} investment={investment} />
-              ))
-            ) : (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Investments Yet</h3>
-                  <p className="text-muted-foreground mb-4">Start your investment journey with one of our plans</p>
-                  <Button onClick={() => router.push("/investment-plans")}>View Investment Plans</Button>
-                </CardContent>
-              </Card>
-            )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {investments.length > 0 ? (
+          investments.map((investment) => (
+            <InvestmentCard key={investment.id} investment={investment} />
+          ))
+        ) : (
+          <Card>
+            <CardContent className="p-12 text-center">
+              <Target className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No Investments Yet</h3>
+              <p className="text-muted-foreground mb-4">Start your investment journey with one of our plans</p>
+              <Button onClick={() => router.push("/investment-plans")}>View Investment Plans</Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Investment Details Modal */}
+      {modalOpen && selectedInvestment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-8 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              onClick={() => setModalOpen(false)}
+              aria-label="Close"
+            >
+              &times;
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Investment Details</h2>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Plan</span>
+                <span className="font-medium">{INVESTMENT_PLANS.find(p => p.type === selectedInvestment.planType)?.name || selectedInvestment.planType}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Amount</span>
+                <span className="font-medium">${selectedInvestment.amount.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Status</span>
+                <span className="font-medium">{selectedInvestment.status}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Daily ROI</span>
+                <span className="font-medium">{selectedInvestment.dailyROI}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Total Earnings</span>
+                <span className="font-medium text-green-600">+${selectedInvestment.totalEarnings.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Start Date</span>
+                <span>{new Date(selectedInvestment.startDate).toLocaleDateString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>End Date</span>
+                <span>{new Date(selectedInvestment.endDate).toLocaleDateString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Days Remaining</span>
+                <span>{selectedInvestment.daysRemaining}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Next Payout</span>
+                <span>{new Date(selectedInvestment.nextPayoutDate).toLocaleDateString()}</span>
+              </div>
+            </div>
           </div>
+        </div>
+      )}
         </TabsContent>
 
         <TabsContent value="transactions" className="space-y-6">
