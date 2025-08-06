@@ -6,7 +6,7 @@ CREATE TABLE "User" (
     "name" TEXT NOT NULL,
     "role" TEXT NOT NULL,
     "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+
 
 -- CreateTable
 CREATE TABLE "Investment" (
