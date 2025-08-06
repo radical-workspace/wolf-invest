@@ -20,7 +20,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [mounted, setMounted] = useState(false)
-  const { login, isLoading } = useAuth()
+  const { login, isLoading, isAdmin } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -42,14 +42,8 @@ export default function LoginPage() {
     }
 
     const result = await login(email, password)
-
     if (result.success) {
-      // Redirect based on actual user role from Supabase (admin or user)
-const { user, isAdmin } = useAuth()
-if (result.success) {
-  router.push(isAdmin ? "/admin/dashboard" : "/user/dashboard")
-}
-
+      router.push(isAdmin ? "/admin/dashboard" : "/user/dashboard")
     } else {
       setError(result.error || "Login failed")
     }

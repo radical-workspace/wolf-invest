@@ -106,7 +106,7 @@ export default function RegisterPage() {
               <h2 className="text-2xl font-bold text-white">Registration Successful!</h2>
               <p className="text-green-200">
                 {confirmationMessage ||
-                  "Your account has been created successfully. Please check your email for a confirmation link."}
+                  "Your account has been created successfully. You can now log in."}
               </p>
               <Button onClick={() => router.push("/login")} className="bg-green-600 hover:bg-green-700">
                 Continue to Login
