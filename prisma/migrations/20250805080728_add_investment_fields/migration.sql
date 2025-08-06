@@ -10,24 +10,24 @@
 
 */
 -- RedefineTables
-PRAGMA defer_foreign_keys=ON;
-PRAGMA foreign_keys=OFF;
-CREATE TABLE "new_Investment" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "amount" REAL NOT NULL,
+-- PRAGMA foreign_keys=OFF; -- Removed for compatibility with non-SQLite databases
+CREATE TABLE "Investment_new" (
+    "id" SERIAL PRIMARY KEY,
+    "amount" DOUBLE PRECISION NOT NULL,
     "status" TEXT NOT NULL,
     "planType" TEXT NOT NULL,
-    "dailyROI" REAL NOT NULL,
-    "endDate" DATETIME NOT NULL,
-    "totalEarnings" REAL NOT NULL,
+    "dailyROI" DOUBLE PRECISION NOT NULL,
+    "endDate" TIMESTAMP NOT NULL,
+    "totalEarnings" DOUBLE PRECISION NOT NULL,
     "daysRemaining" INTEGER NOT NULL,
-    "nextPayoutDate" DATETIME NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "nextPayoutDate" TIMESTAMP NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "userId" INTEGER NOT NULL,
-    CONSTRAINT "Investment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "Investment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE NO ACTION ON UPDATE CASCADE
 );
-INSERT INTO "new_Investment" ("amount", "createdAt", "id", "status", "userId") SELECT "amount", "createdAt", "id", "status", "userId" FROM "Investment";
+
+INSERT INTO "Investment_new" ("id", "amount", "status", "planType", "dailyROI", "endDate", "totalEarnings", "daysRemaining", "nextPayoutDate", "createdAt", "userId")
+SELECT "id", "amount", "status", "planType", "dailyROI", "endDate", "totalEarnings", "daysRemaining", "nextPayoutDate", "createdAt", "userId" FROM "Investment";
+
 DROP TABLE "Investment";
-ALTER TABLE "new_Investment" RENAME TO "Investment";
-PRAGMA foreign_keys=ON;
-PRAGMA defer_foreign_keys=OFF;
+ALTER TABLE "Investment_new" RENAME TO "Investment";
