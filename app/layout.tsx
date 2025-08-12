@@ -2,12 +2,12 @@ import type React from "react"
 import { cookies } from "next/headers"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
-import "./globals.css" // Ensure your global styles are imported
+import "./globals.css"
 
 export async function generateMetadata() {
   return {
-    title: "Wolv.pro Investment Dashboard",
-    description: "Your personal and administrative investment dashboard for Wolv.pro",
+    title: "Wolv-Invest Dashboard",
+    description: "Your personal and administrative investment dashboard for Wolv-Invest platform",
   }
 }
 
