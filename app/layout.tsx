@@ -1,35 +1,32 @@
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/components/auth-provider"
-import "@/styles/globals.css"
+import type React from "react"
+import { cookies } from "next/headers"
+import { SidebarProvider } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/app-sidebar"
+import "./globals.css" // Ensure your global styles are imported
 
-const inter = Inter({ subsets: ["latin"] })
-
-export const metadata: Metadata = {
-  title: "WOLV-INVEST - Crypto Investment Platform",
-  description: "A crypto investment platform offering competitive returns with daily ROI of 2-5%",
+export async function generateMetadata() {
+  return {
+    title: "Wolv.pro Investment Dashboard",
+    description: "Your personal and administrative investment dashboard for Wolv.pro",
+  }
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = cookies()
+  const defaultOpen = cookieStore.get("sidebar:state")?.value === "true"
+
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </ThemeProvider>
+    <html lang="en">
+      <body>
+        <SidebarProvider defaultOpen={defaultOpen}>
+          <AppSidebar />
+          <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
+        </SidebarProvider>
       </body>
     </html>
   )
 }
+
+export const metadata = {
+      generator: 'v0.app'
+    };
