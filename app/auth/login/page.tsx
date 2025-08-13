@@ -24,15 +24,35 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) {
-        setError(error.message)
-      } else {
-        router.push("/dashboard/user")
+      if (authError) {
+        setError(authError.message)
+        return
+      }
+
+      if (authData.user) {
+        const { data: userProfile, error: profileError } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", authData.user.id)
+          .single()
+
+        if (profileError) {
+          console.error("Error fetching user profile:", profileError)
+          // Default to user dashboard if profile fetch fails
+          router.push("/dashboard/user")
+        } else {
+          // Redirect based on user role
+          if (userProfile.role === "admin") {
+            router.push("/dashboard/admin")
+          } else {
+            router.push("/dashboard/user")
+          }
+        }
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.")
@@ -85,6 +105,16 @@ export default function LoginPage() {
             <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 text-white" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </Button>
+
+            <div className="text-center text-purple-200 text-sm mt-4">
+              <p className="mb-2">Demo Credentials:</p>
+              <p>
+                <strong>Admin:</strong> admin@wolv.pro / password123
+              </p>
+              <p>
+                <strong>User:</strong> user@wolv.pro / password123
+              </p>
+            </div>
           </form>
         </CardContent>
       </Card>
