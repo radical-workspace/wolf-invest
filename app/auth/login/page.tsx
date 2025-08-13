@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-
+import Link from "next/link"
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -113,6 +113,12 @@ export default function LoginPage() {
               </p>
               <p>
                 <strong>User:</strong> user@wolv.pro / password123
+              </p>
+              <p className="mt-3">
+                Don't have an account?{" "}
+                <Link href="/auth/sign-up" className="text-purple-300 hover:text-white underline">
+                  Sign up here
+                </Link>
               </p>
             </div>
           </form>
