@@ -27,6 +27,8 @@ export default function UserDashboardPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [showBalance, setShowBalance] = useState(true)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const [userData, setUserData] = useState({
     name: "John Doe",
     accountNumber: "****1234",
@@ -156,6 +158,7 @@ export default function UserDashboardPage() {
                 size="sm"
                 variant="ghost"
                 className="text-white hover:bg-white/20 backdrop-blur-md border border-white/20 rounded-xl"
+                onClick={() => setShowNotifications(!showNotifications)}
               >
                 <Bell className="h-5 w-5" />
               </Button>
@@ -163,6 +166,7 @@ export default function UserDashboardPage() {
                 size="sm"
                 variant="ghost"
                 className="text-white hover:bg-white/20 backdrop-blur-md border border-white/20 rounded-xl"
+                onClick={() => setShowSettings(!showSettings)}
               >
                 <Settings className="h-5 w-5" />
               </Button>
@@ -345,6 +349,65 @@ export default function UserDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {showNotifications && (
+        <div className="fixed top-20 right-4 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+          <div className="p-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+            <h3 className="font-bold text-lg">Notifications</h3>
+          </div>
+          <div className="p-4 space-y-3">
+            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl">
+              <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+              <div>
+                <p className="font-semibold text-slate-800">Investment Update</p>
+                <p className="text-sm text-slate-600">Your VIP plan earned $175 today</p>
+                <p className="text-xs text-slate-500 mt-1">2 hours ago</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 bg-green-50 rounded-xl">
+              <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+              <div>
+                <p className="font-semibold text-slate-800">Deposit Confirmed</p>
+                <p className="text-sm text-slate-600">$5,000 added to your account</p>
+                <p className="text-xs text-slate-500 mt-1">1 day ago</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSettings && (
+        <div className="fixed top-20 right-4 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+          <div className="p-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
+            <h3 className="font-bold text-lg">Settings</h3>
+          </div>
+          <div className="p-4 space-y-2">
+            <Button variant="ghost" className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-slate-50">
+              <User className="h-5 w-5 text-slate-600" />
+              <span className="text-slate-700">Profile Settings</span>
+            </Button>
+            <Button variant="ghost" className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-slate-50">
+              <Shield className="h-5 w-5 text-slate-600" />
+              <span className="text-slate-700">Security</span>
+            </Button>
+            <Button variant="ghost" className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-slate-50">
+              <Bell className="h-5 w-5 text-slate-600" />
+              <span className="text-slate-700">Notifications</span>
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 p-3 rounded-xl hover:bg-red-50 text-red-600"
+              onClick={async () => {
+                await supabase.auth.signOut()
+                window.location.href = "/auth/login"
+              }}
+            >
+              <ArrowUpRight className="h-5 w-5" />
+              <span>Sign Out</span>
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-slate-200/50 px-4 py-3 shadow-2xl">
         <div className="flex items-center justify-around">
