@@ -14,24 +14,32 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-    if (error) {
-      alert(error.message)
-    } else {
-      router.push("/dashboard/user")
+      if (error) {
+        setError(error.message)
+      } else {
+        router.push("/dashboard/user")
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.")
+      console.error("Login error:", err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -43,6 +51,9 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/50 text-red-200 px-4 py-3 rounded">{error}</div>
+            )}
             <div>
               <Label htmlFor="email" className="text-white">
                 Email
