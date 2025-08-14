@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,7 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = createClientComponentClient()
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -52,23 +52,30 @@ export default function SignUpPage() {
       })
 
       if (authError) {
-        setError(authError.message)
+        console.error("Auth error:", authError)
+        setError(authError.message || "Failed to create account. Please try again.")
         return
       }
 
       if (authData.user) {
-        const { error: profileError } = await supabase.from("users").insert([
-          {
-            id: authData.user.id,
-            email: authData.user.email,
-            full_name: fullName,
-            role: "user",
-            plan: "basic",
-          },
-        ])
+        try {
+          const { error: profileError } = await supabase.from("users").insert([
+            {
+              id: authData.user.id,
+              email: authData.user.email,
+              full_name: fullName,
+              role: "user",
+              plan: "basic",
+            },
+          ])
 
-        if (profileError) {
-          console.error("Error creating user profile:", profileError)
+          if (profileError) {
+            console.error("Profile creation error:", profileError)
+            // Don't fail the signup if profile creation fails
+          }
+        } catch (profileErr) {
+          console.error("Profile creation failed:", profileErr)
+          // Continue with success even if profile creation fails
         }
 
         setSuccess(true)
@@ -77,8 +84,8 @@ export default function SignUpPage() {
         }, 2000)
       }
     } catch (err) {
-      setError("An unexpected error occurred. Please try again.")
-      console.error("Sign up error:", err)
+      console.error("Signup error:", err)
+      setError("Network error. Please check your connection and try again.")
     } finally {
       setLoading(false)
     }
