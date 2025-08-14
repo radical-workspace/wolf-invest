@@ -1,11 +1,31 @@
 "use server"
 
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
+import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
 
-// Update the signIn function to handle redirects properly
+function createClient() {
+  const cookieStore = cookies()
+
+  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll()
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+        } catch {
+          // The `setAll` method was called from a Server Component.
+          // This can be ignored if you have middleware refreshing
+          // user sessions.
+        }
+      },
+    },
+  })
+}
+
 export async function signIn(prevState: any, formData: FormData) {
-  // Check if formData is valid
   if (!formData) {
     return { error: "Form data is missing" }
   }
@@ -13,13 +33,11 @@ export async function signIn(prevState: any, formData: FormData) {
   const email = formData.get("email")
   const password = formData.get("password")
 
-  // Validate required fields
   if (!email || !password) {
     return { error: "Email and password are required" }
   }
 
-  const cookieStore = cookies()
-  const supabase = createServerActionClient({ cookies: () => cookieStore })
+  const supabase = createClient()
 
   try {
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -41,27 +59,26 @@ export async function signIn(prevState: any, formData: FormData) {
 
       if (profileError) {
         console.error("Error fetching user profile:", profileError)
-        return { success: true, redirect: "/dashboard/user" }
+        // Default to user dashboard if profile fetch fails
+        redirect("/dashboard/user")
       } else {
-        // Return redirect based on user role
+        // Redirect based on user role
         if (userProfile.role === "admin") {
-          return { success: true, redirect: "/dashboard/admin" }
+          redirect("/dashboard/admin")
         } else {
-          return { success: true, redirect: "/dashboard/user" }
+          redirect("/dashboard/user")
         }
       }
     }
 
-    return { success: true, redirect: "/dashboard/user" }
+    redirect("/dashboard/user")
   } catch (error) {
     console.error("Login error:", error)
-    return { error: "An unexpected error occurred. Please try again." }
+    return { error: "Authentication failed. Please check your credentials." }
   }
 }
 
-// Update the signUp function to handle potential null formData
 export async function signUp(prevState: any, formData: FormData) {
-  // Check if formData is valid
   if (!formData) {
     return { error: "Form data is missing" }
   }
@@ -70,13 +87,11 @@ export async function signUp(prevState: any, formData: FormData) {
   const password = formData.get("password")
   const fullName = formData.get("fullName")
 
-  // Validate required fields
   if (!email || !password || !fullName) {
     return { error: "All fields are required" }
   }
 
-  const cookieStore = cookies()
-  const supabase = createServerActionClient({ cookies: () => cookieStore })
+  const supabase = createClient()
 
   try {
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -111,8 +126,7 @@ export async function signUp(prevState: any, formData: FormData) {
 }
 
 export async function signOut() {
-  const cookieStore = cookies()
-  const supabase = createServerActionClient({ cookies: () => cookieStore })
-
+  const supabase = createClient()
   await supabase.auth.signOut()
+  redirect("/auth/login")
 }

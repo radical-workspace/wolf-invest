@@ -26,10 +26,11 @@ export default function LoginPage() {
 
   // Handle successful login by redirecting
   useEffect(() => {
-    if (state?.success && state?.redirect) {
-      router.push(state.redirect)
+    if (state?.success) {
+      // The server action will handle the redirect
+      return
     }
-  }, [state, router])
+  }, [state])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900 p-4">
